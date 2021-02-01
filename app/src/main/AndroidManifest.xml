@@ -17,6 +17,8 @@
         android:launchMode="singleTop"
         android:theme="@style/AppTheme">
         <activity android:name="idv.markkuo.cscblebridge.MainActivity">
+        </activity>
+        <activity android:name="idv.markkuo.cscblebridge.LaunchActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
