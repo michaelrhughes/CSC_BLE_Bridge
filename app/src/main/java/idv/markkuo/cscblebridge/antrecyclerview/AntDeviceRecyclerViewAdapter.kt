@@ -3,13 +3,17 @@ package idv.markkuo.cscblebridge.antrecyclerview
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import idv.markkuo.cscblebridge.service.ant.AntDevice
+import idv.markkuo.cscblebridge.service.ble.BleServiceType
 
-class AntDeviceRecyclerViewAdapter: RecyclerView.Adapter<AntDeviceViewHolder>() {
+class AntDeviceRecyclerViewAdapter(private val deviceSelected: (device: AntDevice) -> Unit): RecyclerView.Adapter<AntDeviceViewHolder>() {
     private val deviceList = ArrayList<AntDevice>()
+    private var selectedDevices: HashMap<BleServiceType, Int>? = null
 
-    fun updateDevices(devices: List<AntDevice>) {
+    fun updateDevices(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>) {
+        this.selectedDevices = selectedDevices
         deviceList.clear()
         deviceList.addAll(devices)
+        // TODO could do this better
         notifyDataSetChanged()
     }
 
@@ -32,6 +36,7 @@ class AntDeviceRecyclerViewAdapter: RecyclerView.Adapter<AntDeviceViewHolder>() 
     override fun getItemCount(): Int = deviceList.size
 
     override fun onBindViewHolder(holder: AntDeviceViewHolder, position: Int) {
-        holder.view.bind(deviceList[position])
+        val antDevice = deviceList[position]
+        holder.view.bind(antDevice, selectedDevices?.values?.contains(antDevice.deviceId) ?: false, deviceSelected)
     }
 }

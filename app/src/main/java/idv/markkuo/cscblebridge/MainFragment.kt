@@ -1,12 +1,6 @@
 package idv.markkuo.cscblebridge
 
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
-import android.os.Build
 import android.os.Bundle
-import android.os.IBinder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,16 +9,15 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import idv.markkuo.cscblebridge.antrecyclerview.AntDeviceRecyclerViewAdapter
-import idv.markkuo.cscblebridge.service.MainService
 import idv.markkuo.cscblebridge.service.ant.AntDevice
-import java.util.*
-import kotlin.collections.HashMap
+import idv.markkuo.cscblebridge.service.ble.BleServiceType
 
 class MainFragment: Fragment() {
 
     interface ServiceStarter {
         fun startService()
         fun stopService()
+        fun deviceSelected(antDevice: AntDevice)
     }
 
     private var isSearching = false
@@ -47,14 +40,16 @@ class MainFragment: Fragment() {
 
         val recyclerView = view.findViewById<RecyclerView>(R.id.main_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(view.context)
-        antDeviceRecyclerViewAdapter = AntDeviceRecyclerViewAdapter()
+        antDeviceRecyclerViewAdapter = AntDeviceRecyclerViewAdapter {
+            (activity as ServiceStarter).deviceSelected(it)
+        }
         recyclerView.adapter = antDeviceRecyclerViewAdapter
         return view
     }
 
-    fun setDevices(devices: List<AntDevice>) {
+    fun setDevices(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>) {
         activity?.runOnUiThread {
-            antDeviceRecyclerViewAdapter?.updateDevices(devices)
+            antDeviceRecyclerViewAdapter?.updateDevices(devices, selectedDevices)
         }
     }
 }

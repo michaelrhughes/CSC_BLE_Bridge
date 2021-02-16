@@ -14,21 +14,25 @@ class AntToBleBridge {
     private var bleServer: BleServer? = null
 
     val antDevices = hashMapOf<Int, AntDevice>()
+    val selectedDevices = hashMapOf<BleServiceType, Int>()
+    var serviceCallback: (() -> Unit)? = null
 
     fun startup(service: Context, callback: () -> Unit) {
+        serviceCallback = callback
         stop()
         antDevices.clear()
         bleServer = BleServer().apply {
             startServer(service)
         }
+
         antConnectors.add(BsdConnector(service, object: AntDeviceConnector.DeviceManagerListener<AntDevice.BsdDevice> {
             override fun onDeviceStateChanged(result: RequestAccessResult, deviceState: DeviceState) {
             }
 
             override fun onDataUpdated(data: AntDevice.BsdDevice) {
-                antDevices[data.deviceId] = data
-                bleServer?.updateData(BleServiceType.CscService, data)
-                callback()
+                dataUpdated(data, BleServiceType.CscService, callback) {
+                    return@dataUpdated BsdConnector(service, this)
+                }
             }
         }))
 
@@ -37,9 +41,9 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.HRDevice) {
-                antDevices[data.deviceId] = data
-                bleServer?.updateData(BleServiceType.HrService, data)
-                callback()
+                dataUpdated(data, BleServiceType.HrService, callback) {
+                    return@dataUpdated HRConnector(service, this)
+                }
             }
         }))
 
@@ -48,18 +52,45 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.SSDevice) {
-                antDevices[data.deviceId] = data
-                bleServer?.updateData(BleServiceType.RscService, data)
-                callback()
+                dataUpdated(data, BleServiceType.RscService, callback) {
+                    return@dataUpdated SSConnector(service, this)
+                }
             }
         }))
 
         antConnectors.forEach { connector -> connector.startSearch() }
     }
 
+    private fun dataUpdated(data: AntDevice, type: BleServiceType, serviceCallback: () -> Unit, createService: () -> AntDeviceConnector<*, *>) {
+        val isNew = !antDevices.containsKey(data.deviceId)
+        antDevices[data.deviceId] = data
+        bleServer?.updateData(type, data)
+        if (isNew) {
+            val connector = createService()
+            antConnectors.add(connector)
+            connector.startSearch()
+        }
+        if (!selectedDevices.containsKey(type)) {
+            selectedDevices[type] = data.deviceId
+            selectedDevicesUpdated()
+        }
+        serviceCallback()
+    }
+
+    fun deviceSelected(data: AntDevice) {
+        selectedDevices[data.bleType] = data.deviceId
+        selectedDevicesUpdated()
+        serviceCallback?.invoke()
+    }
+
+    private fun selectedDevicesUpdated() {
+        bleServer?.selectedDevices = selectedDevices
+    }
+
     fun stop() {
         antConnectors.forEach { connector -> connector.stopSearch() }
         antConnectors.clear()
         bleServer?.stopServer()
+        serviceCallback = null
     }
 }

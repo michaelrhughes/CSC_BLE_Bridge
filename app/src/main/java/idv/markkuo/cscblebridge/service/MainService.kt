@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import idv.markkuo.cscblebridge.LaunchActivity
 import idv.markkuo.cscblebridge.R
 import idv.markkuo.cscblebridge.service.ant.AntDevice
+import idv.markkuo.cscblebridge.service.ble.BleServiceType
 
 class MainService : Service() {
 
@@ -22,7 +23,7 @@ class MainService : Service() {
     }
 
     interface MainServiceListener {
-        fun onDevicesUpdated(devices: List<AntDevice>)
+        fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>)
     }
 
     private val listeners = ArrayList<MainServiceListener>()
@@ -35,7 +36,7 @@ class MainService : Service() {
         bridge.startup(this) {
             val newDevices = bridge.antDevices.values.toList()
             listeners.forEach {
-                it.onDevicesUpdated(newDevices)
+                it.onDevicesUpdated(newDevices, bridge.selectedDevices)
             }
         }
     }
@@ -106,6 +107,10 @@ class MainService : Service() {
 
     fun getConnectedDevices(): HashMap<Int, AntDevice> {
         return bridge.antDevices
+    }
+
+    fun deviceSelected(antDevice: AntDevice) {
+        bridge.deviceSelected(antDevice)
     }
 
     override fun onDestroy() {

@@ -18,6 +18,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Semaphore
 import java.util.concurrent.locks.Lock
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 class BleServer {
@@ -34,6 +35,7 @@ class BleServer {
     private val antData = hashMapOf<BleServiceType, AntDevice>()
     private val servicesToCreate = ArrayList(BleServiceType.serviceTypes)
     private val mutex = Semaphore(1)
+    var selectedDevices = HashMap<BleServiceType, Int>()
 
     fun startServer(context: Context) {
         this.context = context
@@ -98,7 +100,7 @@ class BleServer {
                 if (service != null) {
                     Log.i(TAG, "Notifying ${device.name} for ${service.uuid}")
                     val antDevice = antData[objectInstance]
-                    if (antDevice != null) {
+                    if (antDevice != null && selectedDevices.values.contains(antDevice.deviceId)) {
                         Log.i(TAG, "Notifying ${objectInstance.javaClass.canonicalName}:${antDevice.deviceId}")
                         val data = objectInstance.getBleData(antDevice)
                         val measurementCharacteristic: BluetoothGattCharacteristic = service

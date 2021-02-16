@@ -10,6 +10,7 @@ import android.os.IBinder
 import androidx.appcompat.app.AppCompatActivity
 import idv.markkuo.cscblebridge.service.MainService
 import idv.markkuo.cscblebridge.service.ant.AntDevice
+import idv.markkuo.cscblebridge.service.ble.BleServiceType
 
 class LaunchActivity: AppCompatActivity(), MainFragment.ServiceStarter, MainService.MainServiceListener {
 
@@ -52,8 +53,12 @@ class LaunchActivity: AppCompatActivity(), MainFragment.ServiceStarter, MainServ
         stopService(serviceIntent)
     }
 
-    override fun onDevicesUpdated(devices: List<AntDevice>) {
+    override fun deviceSelected(antDevice: AntDevice) {
+        mService?.deviceSelected(antDevice)
+    }
+
+    override fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>) {
         val mainFragment = supportFragmentManager.findFragmentById(R.id.main_fragment) as MainFragment
-        mainFragment.setDevices(devices)
+        mainFragment.setDevices(devices, selectedDevices)
     }
 }
