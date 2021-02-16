@@ -12,7 +12,7 @@ class HRConnector(context: Context, listener: DeviceManagerListener<AntDevice.HR
     }
 
     override fun subscribeToEvents(pcc: AntPlusHeartRatePcc) {
-        pcc.subscribeHeartRateDataEvent(IHeartRateDataReceiver { estTimestamp, eventFlags, computedHeartRate, heartBeatCount, heartBeatEventTime, dataState ->
+        pcc.subscribeHeartRateDataEvent(IHeartRateDataReceiver { estTimestamp, _, computedHeartRate, heartBeatCount, heartBeatEventTime, dataState ->
             val device = getDevice(pcc)
             device.hr = computedHeartRate
             device.hrTimestamp = estTimestamp

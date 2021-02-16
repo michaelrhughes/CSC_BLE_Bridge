@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import idv.markkuo.cscblebridge.MainActivity
+import idv.markkuo.cscblebridge.LaunchActivity
 import idv.markkuo.cscblebridge.R
 
 class MainService : Service() {
@@ -25,7 +25,7 @@ class MainService : Service() {
     override fun onCreate() {
         super.onCreate()
         startServiceInForeground()
-        bridge.startupAnt(this)
+        bridge.startup(this)
     }
 
     private val binder: IBinder = LocalBinder()
@@ -59,7 +59,7 @@ class MainService : Service() {
             val notifyPendingIntent = PendingIntent.getActivity(
                     this,
                     0,
-                    Intent(this.applicationContext, MainActivity::class.java),
+                    Intent(this.applicationContext, LaunchActivity::class.java),
                     PendingIntent.FLAG_UPDATE_CURRENT)
 
             // build a notification
@@ -87,6 +87,6 @@ class MainService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        bridge.stopAnt()
+        bridge.stop()
     }
 }

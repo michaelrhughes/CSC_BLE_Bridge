@@ -1,21 +1,33 @@
 package idv.markkuo.cscblebridge.service
 
 import android.content.Context
+import android.os.ParcelUuid
 import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import idv.markkuo.cscblebridge.service.ant.*
+import idv.markkuo.cscblebridge.service.ble.BleServer
+import idv.markkuo.cscblebridge.service.ble.BleServiceType
+import java.util.ArrayList
 
 class AntToBleBridge {
 
     private val antConnectors = ArrayList<AntDeviceConnector<*, *>>()
+    private var bleServer: BleServer? = null
 
-    fun startupAnt(service: Context) {
+    fun startup(service: Context) {
+        stop()
+        bleServer = BleServer().apply {
+            startServer(service)
+            BleServiceType.serviceTypes.forEach { subClass ->
+                createService(subClass)
+            }
+        }
         antConnectors.add(BsdConnector(service, object: AntDeviceConnector.DeviceManagerListener<AntDevice.BsdDevice> {
             override fun onDeviceStateChanged(result: RequestAccessResult, deviceState: DeviceState) {
             }
 
             override fun onDataUpdated(data: AntDevice.BsdDevice) {
-                // TODO broadcast
+                bleServer?.updateData(BleServiceType.CscService, data)
             }
         }))
 
@@ -24,7 +36,7 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.HRDevice) {
-                // TODO broadcast
+                bleServer?.updateData(BleServiceType.HrService, data)
             }
         }))
 
@@ -33,15 +45,16 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.SSDevice) {
-                // TODO broadcast
+                bleServer?.updateData(BleServiceType.RscService, data)
             }
         }))
 
         antConnectors.forEach { connector -> connector.startSearch() }
     }
 
-    fun stopAnt() {
+    fun stop() {
         antConnectors.forEach { connector -> connector.stopSearch() }
+        antConnectors.clear()
+        bleServer?.stopServer()
     }
-
 }

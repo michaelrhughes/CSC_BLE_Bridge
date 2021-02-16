@@ -48,4 +48,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'], exclude: [])
     implementation files('libs/antpluginlib_3-8-0.aar')
+    implementation "org.jetbrains.kotlin:kotlin-reflect:1.4.30-RC"
 }

@@ -37,7 +37,7 @@ class BsdConnector(context: Context, listener: DeviceManagerListener<AntDevice.B
             }
         })
 
-        pcc.subscribeRawSpeedAndDistanceDataEvent { estTimestamp, eventFlags, timestampOfLastEvent, cumulativeRevolutions -> //estTimestamp - The estimated timestamp of when this event was triggered. Useful for correlating multiple events and determining when data was sent for more accurate data records.
+        pcc.subscribeRawSpeedAndDistanceDataEvent { estTimestamp, _, timestampOfLastEvent, cumulativeRevolutions -> //estTimestamp - The estimated timestamp of when this event was triggered. Useful for correlating multiple events and determining when data was sent for more accurate data records.
             //eventFlags - Informational flags about the event.
             //timestampOfLastEvent - Sensor reported time counter value of last distance or speed computation (up to 1/200s accuracy). Units: s. Rollover: Every ~46 quadrillion s (~1.5 billion years).
             //cumulativeRevolutions - Total number of revolutions since the sensor was first connected. Note: If the subscriber is not the first PCC connected to the device the accumulation will probably already be at a value greater than 0 and the subscriber should save the first received value as a relative zero for itself. Units: revolutions. Rollover: Every ~9 quintillion revolutions.

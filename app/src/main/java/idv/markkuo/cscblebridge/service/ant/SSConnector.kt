@@ -3,6 +3,7 @@ package idv.markkuo.cscblebridge.service.ant
 import android.content.Context
 import android.util.Log
 import android.util.Pair
+import com.dsi.ant.plugins.antplus.pcc.AntPlusHeartRatePcc
 import com.dsi.ant.plugins.antplus.pcc.AntPlusStrideSdmPcc
 import com.dsi.ant.plugins.antplus.pcc.AntPlusStrideSdmPcc.*
 import com.dsi.ant.plugins.antplus.pcc.defines.EventFlag
@@ -11,7 +12,7 @@ import com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle
 import java.util.*
 import java.util.concurrent.Semaphore
 
-class SSConnector(context: Context, listener: DeviceManagerListener<AntPlusStrideSdmPcc, AntDevice.SSDevice>): AntDeviceConnector<AntPlusStrideSdmPcc, AntDevice.SSDevice>(context, listener) {
+class SSConnector(context: Context, listener: DeviceManagerListener<AntDevice.SSDevice>): AntDeviceConnector<AntPlusStrideSdmPcc, AntDevice.SSDevice>(context, listener) {
 
     companion object {
         private const val TAG = "SSConnector"
@@ -34,7 +35,7 @@ class SSConnector(context: Context, listener: DeviceManagerListener<AntPlusStrid
             private val strideList = LinkedList<Pair<Long, Long>>()
             private val lock = Semaphore(1)
             override fun onNewStrideCount(estTimestamp: Long, eventFlags: EnumSet<EventFlag>, cumulativeStrides: Long) {
-                Thread(Runnable {
+                Thread {
                     try {
                         lock.acquire()
                         // Calculate number of strides per minute, updates happen around every 500 ms, this number
@@ -66,7 +67,7 @@ class SSConnector(context: Context, listener: DeviceManagerListener<AntPlusStrid
                     } catch (e: InterruptedException) {
                         Log.e(TAG, "Unable to acquire lock to update running cadence", e)
                     }
-                }).start()
+                }.start()
             }
 
             private fun calculateStepsPerMin(estTimestamp: Long, cumulativeStrides: Long, p: Pair<Long, Long>): Long {
