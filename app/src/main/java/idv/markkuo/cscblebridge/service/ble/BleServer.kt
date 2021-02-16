@@ -14,6 +14,10 @@ import android.os.ParcelUuid
 import android.util.Log
 import idv.markkuo.cscblebridge.service.ant.AntDevice
 import java.util.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
+import java.util.concurrent.locks.Lock
+import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
 
 class BleServer {
@@ -27,8 +31,9 @@ class BleServer {
     private var timer: Timer? = null
     private val registeredDevices: HashSet<BluetoothDevice> = HashSet()
     private var bluetoothLeAdvertiser: BluetoothLeAdvertiser? = null
-
     private val antData = hashMapOf<BleServiceType, AntDevice>()
+    private val servicesToCreate = ArrayList(BleServiceType.serviceTypes)
+    private val mutex = Semaphore(1)
 
     fun startServer(context: Context) {
         this.context = context
@@ -38,6 +43,10 @@ class BleServer {
         if (!checkBluetoothSupport(bluetoothAdapter, context.packageManager)) {
             throw UnsupportedOperationException("Bluetooth LE isn't supported")
         }
+
+        // Register for system Bluetooth events
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        context.registerReceiver(bluetoothReceiver, filter)
 
         if (!bluetoothAdapter.isEnabled) {
             Log.d(TAG, "Bluetooth is currently disabled...enabling")
@@ -58,9 +67,8 @@ class BleServer {
         server = bluetoothManager?.openGattServer(context, gattServerCallback)
                 ?: throw UnsupportedOperationException("Bluetooth manager could not be created")
 
-        // Register for system Bluetooth events
-        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
-        context.registerReceiver(bluetoothReceiver, filter)
+
+        createNextService()
 
         timer?.cancel()
         timer = Timer().apply {
@@ -72,13 +80,26 @@ class BleServer {
         }
     }
 
+    private fun createNextService() {
+        mutex.acquire()
+        if (servicesToCreate.isNotEmpty()) {
+            createService(servicesToCreate[0])
+            servicesToCreate.removeFirst()
+        }
+        mutex.release()
+    }
+
     fun notifyRegisteredDevices() {
+        Log.i(TAG, "Notifying registered devices ${registeredDevices.size}")
         registeredDevices.forEach { device ->
+            Log.i(TAG, "Notifying ${device.name}")
             BleServiceType.serviceTypes.forEach { objectInstance ->
                 val service = server?.getService(objectInstance.serviceId)
                 if (service != null) {
+                    Log.i(TAG, "Notifying ${device.name} for ${service.uuid}")
                     val antDevice = antData[objectInstance]
                     if (antDevice != null) {
+                        Log.i(TAG, "Notifying ${objectInstance.javaClass.canonicalName}:${antDevice.deviceId}")
                         val data = objectInstance.getBleData(antDevice)
                         val measurementCharacteristic: BluetoothGattCharacteristic = service
                                 .getCharacteristic(objectInstance.measurement)
@@ -87,6 +108,8 @@ class BleServer {
                         }
                         // false is used to send a notification
                         server?.notifyCharacteristicChanged(device, measurementCharacteristic, false)
+                    } else {
+                        Log.i(TAG, "Not notifying anything, ant device was null")
                     }
                 } else {
                     Log.v(TAG, "Service ${objectInstance.serviceId} was not found as an installed service")
@@ -192,6 +215,7 @@ class BleServer {
     private val gattServerCallback: BluetoothGattServerCallback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
             Log.i(TAG, "onServiceAdded(): status:$status, service:$service")
+            createNextService()
         }
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {

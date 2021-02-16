@@ -7,6 +7,12 @@ import idv.markkuo.cscblebridge.service.ant.AntDevice
 class AntDeviceRecyclerViewAdapter: RecyclerView.Adapter<AntDeviceViewHolder>() {
     private val deviceList = ArrayList<AntDevice>()
 
+    fun updateDevices(devices: List<AntDevice>) {
+        deviceList.clear()
+        deviceList.addAll(devices)
+        notifyDataSetChanged()
+    }
+
     fun addDevice(antDevice: AntDevice) {
         deviceList.add(antDevice)
         notifyItemInserted(deviceList.size - 1)

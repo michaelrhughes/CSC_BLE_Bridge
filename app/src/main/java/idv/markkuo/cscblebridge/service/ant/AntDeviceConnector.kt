@@ -21,23 +21,24 @@ abstract class AntDeviceConnector<T: AntPluginPcc, Data: AntDevice>(private val 
     }
 
     private val devices = ConcurrentHashMap<Int, Data>()
-    private var pcc: AntPluginPcc? = null
+
     private var releaseHandle: PccReleaseHandle<T>? = null
 
     private var deviceStateChangedReceiver: IDeviceStateChangeReceiver = IDeviceStateChangeReceiver {
         Log.d("Test", "Device State Changed ${it.name}")
         if (it == DeviceState.DEAD) {
-            pcc = null
+            // TODO remove device?
         }
     }
 
     private val resultReceiver = AntPluginPcc.IPluginAccessResultReceiver {
-        pcc: T, requestAccessResult: RequestAccessResult, deviceState: DeviceState ->
+        pcc: T?, requestAccessResult: RequestAccessResult, deviceState: DeviceState ->
         when (requestAccessResult) {
             RequestAccessResult.SUCCESS -> {
-                this.pcc = pcc
-                Log.d(TAG, "${pcc.deviceName}: ${deviceState})")
-                subscribeToEvents(pcc)
+                if (pcc != null) {
+                    Log.d(TAG, "${pcc.deviceName}: ${deviceState})")
+                    subscribeToEvents(pcc)
+                }
             }
             RequestAccessResult.USER_CANCELLED -> {
                 Log.d(TAG, "Ant Device Closed: $requestAccessResult")
@@ -52,7 +53,7 @@ abstract class AntDeviceConnector<T: AntPluginPcc, Data: AntDevice>(private val 
     abstract fun requestAccess(
             context: Context,
             resultReceiver: AntPluginPcc.IPluginAccessResultReceiver<T>,
-            stateChangedReceiver: AntPluginPcc.IDeviceStateChangeReceiver,
+            stateChangedReceiver: IDeviceStateChangeReceiver,
             deviceNumber: Int = 0
     ): PccReleaseHandle<T>
 

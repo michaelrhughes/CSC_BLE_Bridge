@@ -15,6 +15,13 @@
             android:id="@+id/ant_device_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
-
+        <TextView
+            android:id="@+id/ant_device_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+        <TextView
+            android:id="@+id/ant_device_data"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

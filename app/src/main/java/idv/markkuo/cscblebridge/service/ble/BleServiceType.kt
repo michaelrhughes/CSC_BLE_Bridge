@@ -12,8 +12,8 @@ import kotlin.experimental.or
  */
 sealed class BleServiceType(val serviceId: UUID, val measurement: UUID, val feature: UUID?) {
     companion object {
-        val serviceTypes = listOf(CscService, HrService, RscService)
-        var CLIENT_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        val serviceTypes = listOf(CscService, RscService, HrService)
+        var CLIENT_CONFIG: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 
     object CscService: BleServiceType(

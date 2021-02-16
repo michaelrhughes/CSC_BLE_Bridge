@@ -1,7 +1,6 @@
 package idv.markkuo.cscblebridge.service
 
 import android.content.Context
-import android.os.ParcelUuid
 import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import idv.markkuo.cscblebridge.service.ant.*
@@ -14,20 +13,22 @@ class AntToBleBridge {
     private val antConnectors = ArrayList<AntDeviceConnector<*, *>>()
     private var bleServer: BleServer? = null
 
-    fun startup(service: Context) {
+    val antDevices = hashMapOf<Int, AntDevice>()
+
+    fun startup(service: Context, callback: () -> Unit) {
         stop()
+        antDevices.clear()
         bleServer = BleServer().apply {
             startServer(service)
-            BleServiceType.serviceTypes.forEach { subClass ->
-                createService(subClass)
-            }
         }
         antConnectors.add(BsdConnector(service, object: AntDeviceConnector.DeviceManagerListener<AntDevice.BsdDevice> {
             override fun onDeviceStateChanged(result: RequestAccessResult, deviceState: DeviceState) {
             }
 
             override fun onDataUpdated(data: AntDevice.BsdDevice) {
+                antDevices[data.deviceId] = data
                 bleServer?.updateData(BleServiceType.CscService, data)
+                callback()
             }
         }))
 
@@ -36,7 +37,9 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.HRDevice) {
+                antDevices[data.deviceId] = data
                 bleServer?.updateData(BleServiceType.HrService, data)
+                callback()
             }
         }))
 
@@ -45,7 +48,9 @@ class AntToBleBridge {
             }
 
             override fun onDataUpdated(data: AntDevice.SSDevice) {
+                antDevices[data.deviceId] = data
                 bleServer?.updateData(BleServiceType.RscService, data)
+                callback()
             }
         }))
 

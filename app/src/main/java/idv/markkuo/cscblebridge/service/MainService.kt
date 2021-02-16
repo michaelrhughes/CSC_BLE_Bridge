@@ -11,6 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import idv.markkuo.cscblebridge.LaunchActivity
 import idv.markkuo.cscblebridge.R
+import idv.markkuo.cscblebridge.service.ant.AntDevice
 
 class MainService : Service() {
 
@@ -20,12 +21,23 @@ class MainService : Service() {
         private const val ONGOING_NOTIFICATION_ID = 9999
     }
 
+    interface MainServiceListener {
+        fun onDevicesUpdated(devices: List<AntDevice>)
+    }
+
+    private val listeners = ArrayList<MainServiceListener>()
+
     private val bridge = AntToBleBridge()
 
     override fun onCreate() {
         super.onCreate()
         startServiceInForeground()
-        bridge.startup(this)
+        bridge.startup(this) {
+            val newDevices = bridge.antDevices.values.toList()
+            listeners.forEach {
+                it.onDevicesUpdated(newDevices)
+            }
+        }
     }
 
     private val binder: IBinder = LocalBinder()
@@ -84,6 +96,17 @@ class MainService : Service() {
         }
     }
 
+    fun addListener(serviceListener: MainServiceListener) {
+        listeners.add(serviceListener)
+    }
+
+    fun removeListener(serviceListener: MainServiceListener) {
+        listeners.remove(serviceListener)
+    }
+
+    fun getConnectedDevices(): HashMap<Int, AntDevice> {
+        return bridge.antDevices
+    }
 
     override fun onDestroy() {
         super.onDestroy()
