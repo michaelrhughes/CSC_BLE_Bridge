@@ -29,7 +29,7 @@ class AntDeviceRecyclerViewAdapter(private val deviceSelected: (device: AntDevic
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AntDeviceViewHolder {
-        val view = AntDeviceView(parent.context).doInflation(parent)
+        val view = AntDeviceView(parent.context)
         return AntDeviceViewHolder(view)
     }
 

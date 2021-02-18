@@ -15,28 +15,28 @@ class AntDeviceView @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    private lateinit var nameView: TextView
-    private lateinit var typeView: TextView
-    private lateinit var dataView: TextView
-    private lateinit var background: LinearLayout
+    private val nameView: TextView
+    private val typeView: TextView
+    private val dataView: TextView
+    private val background: LinearLayout
+    private val broadcastButtonView: BroadcastButtonView
 
     init {
         inflate(context, R.layout.ant_list_item, this)
         layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    }
-
-    fun doInflation(viewGroup: ViewGroup): AntDeviceView {
         nameView = findViewById(R.id.ant_device_name)
         typeView = findViewById(R.id.ant_device_type)
         dataView = findViewById(R.id.ant_device_data)
         background = findViewById(R.id.ant_device_background)
-        return this
+        broadcastButtonView = findViewById(R.id.broadcast_button_view)
     }
 
     fun bind(antDevice: AntDevice, isSelected: Boolean, onClickListener: (antDevice: AntDevice) -> Unit) {
         val color = if (isSelected) {
+            broadcastButtonView.setState(BroadcastButtonView.BroadcastButtonViewState.Broadcasting)
             context.resources.getColor(android.R.color.holo_blue_dark)
         } else {
+            broadcastButtonView.setState(BroadcastButtonView.BroadcastButtonViewState.NotSelected)
             context.resources.getColor(android.R.color.black)
         }
 
@@ -45,5 +45,6 @@ class AntDeviceView @JvmOverloads constructor(
         typeView.text = antDevice.typeName
         dataView.text = antDevice.getDataString()
         background.setOnClickListener { onClickListener(antDevice) }
+        broadcastButtonView.setClickListener { onClickListener(antDevice) }
     }
 }
