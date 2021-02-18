@@ -20,15 +20,19 @@ class MainService : Service() {
         private const val CHANNEL_DEFAULT_IMPORTANCE = "csc_ble_channel"
         private const val MAIN_CHANNEL_NAME = "CscService"
         private const val ONGOING_NOTIFICATION_ID = 9999
+        private const val STOP_SELF_ACTION = "stop_self"
     }
 
     interface MainServiceListener {
-        fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>)
+        fun searching(isSearching: Boolean)
+        fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>)
     }
 
     private val listeners = ArrayList<MainServiceListener>()
 
     private val bridge = AntToBleBridge()
+    val isSearching: Boolean
+        get() = bridge.isSearching
 
     override fun onCreate() {
         super.onCreate()
@@ -39,6 +43,17 @@ class MainService : Service() {
                 it.onDevicesUpdated(newDevices, bridge.selectedDevices)
             }
         }
+        listeners.forEach { it.searching(true) }
+    }
+
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.action?.let {
+            if (it == STOP_SELF_ACTION) {
+                stopSearching()
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
     private val binder: IBinder = LocalBinder()
@@ -65,6 +80,11 @@ class MainService : Service() {
     }
 
     private fun startServiceInForeground() {
+        val intent = Intent(this, MainService::class.java)
+        intent.action = STOP_SELF_ACTION
+        val stopPendingIntent = PendingIntent.getService(this, 0, intent, 0)
+        val stopAction = NotificationCompat.Action(R.drawable.ic_baseline_stop_24, "Stop", stopPendingIntent)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel(CHANNEL_DEFAULT_IMPORTANCE, MAIN_CHANNEL_NAME)
 
@@ -76,12 +96,13 @@ class MainService : Service() {
                     PendingIntent.FLAG_UPDATE_CURRENT)
 
             // build a notification
-            val notification: Notification = Notification.Builder(this, CHANNEL_DEFAULT_IMPORTANCE)
+            val notification: Notification = NotificationCompat.Builder(this, CHANNEL_DEFAULT_IMPORTANCE)
                     .setContentTitle(getText(R.string.app_name))
                     .setContentText("Active")
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_baseline_bluetooth_24)
                     .setAutoCancel(false)
                     .setContentIntent(notifyPendingIntent)
+                    .addAction(stopAction)
                     .setTicker(getText(R.string.app_name))
                     .build()
             startForeground(ONGOING_NOTIFICATION_ID, notification)
@@ -89,12 +110,24 @@ class MainService : Service() {
             val notification: Notification = NotificationCompat.Builder(this, CHANNEL_DEFAULT_IMPORTANCE)
                     .setContentTitle(getString(R.string.app_name))
                     .setContentText("Active")
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_baseline_bluetooth_24)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setAutoCancel(false)
+                    .addAction(stopAction)
                     .build()
             startForeground(ONGOING_NOTIFICATION_ID, notification)
         }
+    }
+
+    private fun cleanup() {
+        listeners.forEach { it.onDevicesUpdated(emptyList(), emptyMap()) }
+        listeners.forEach { it.searching(false) }
+    }
+
+    fun stopSearching() {
+        cleanup()
+        bridge.stop()
+        stopSelf()
     }
 
     fun addListener(serviceListener: MainServiceListener) {
@@ -114,7 +147,7 @@ class MainService : Service() {
     }
 
     override fun onDestroy() {
+        stopSearching()
         super.onDestroy()
-        bridge.stop()
     }
 }

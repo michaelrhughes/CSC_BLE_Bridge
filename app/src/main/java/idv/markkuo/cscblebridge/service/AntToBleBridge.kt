@@ -6,6 +6,9 @@ import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import idv.markkuo.cscblebridge.service.ant.*
 import idv.markkuo.cscblebridge.service.ble.BleServer
 import idv.markkuo.cscblebridge.service.ble.BleServiceType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.ArrayList
 
 class AntToBleBridge {
@@ -16,10 +19,12 @@ class AntToBleBridge {
     val antDevices = hashMapOf<Int, AntDevice>()
     val selectedDevices = hashMapOf<BleServiceType, Int>()
     var serviceCallback: (() -> Unit)? = null
+    var isSearching = false
 
     fun startup(service: Context, callback: () -> Unit) {
         serviceCallback = callback
         stop()
+        isSearching = true
         antDevices.clear()
         bleServer = BleServer().apply {
             startServer(service)
@@ -88,9 +93,16 @@ class AntToBleBridge {
     }
 
     fun stop() {
-        antConnectors.forEach { connector -> connector.stopSearch() }
-        antConnectors.clear()
-        bleServer?.stopServer()
-        serviceCallback = null
+        isSearching = false
+
+        runBlocking {
+            withContext(Dispatchers.IO) {
+                antConnectors.forEach { connector -> connector.stopSearch() }
+                antConnectors.clear()
+                bleServer?.stopServer()
+
+                serviceCallback = null
+            }
+        }
     }
 }

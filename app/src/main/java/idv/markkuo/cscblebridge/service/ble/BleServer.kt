@@ -13,6 +13,9 @@ import android.content.pm.PackageManager
 import android.os.ParcelUuid
 import android.util.Log
 import idv.markkuo.cscblebridge.service.ant.AntDevice
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Semaphore
@@ -123,9 +126,10 @@ class BleServer {
 
     fun stopServer() {
         this.context?.unregisterReceiver(bluetoothReceiver)
+        server?.close()
         timer?.cancel()
         timer = null
-        server?.close()
+
         context = null
     }
 

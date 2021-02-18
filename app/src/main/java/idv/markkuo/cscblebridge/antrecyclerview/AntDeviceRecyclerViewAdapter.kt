@@ -7,9 +7,9 @@ import idv.markkuo.cscblebridge.service.ble.BleServiceType
 
 class AntDeviceRecyclerViewAdapter(private val deviceSelected: (device: AntDevice) -> Unit): RecyclerView.Adapter<AntDeviceViewHolder>() {
     private val deviceList = ArrayList<AntDevice>()
-    private var selectedDevices: HashMap<BleServiceType, Int>? = null
+    private var selectedDevices: Map<BleServiceType, Int>? = null
 
-    fun updateDevices(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>) {
+    fun updateDevices(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>) {
         this.selectedDevices = selectedDevices
         deviceList.clear()
         deviceList.addAll(devices)

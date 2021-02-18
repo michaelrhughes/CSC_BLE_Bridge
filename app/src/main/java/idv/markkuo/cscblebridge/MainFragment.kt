@@ -18,25 +18,27 @@ class MainFragment: Fragment() {
         fun startService()
         fun stopService()
         fun deviceSelected(antDevice: AntDevice)
+        fun isSearching(): Boolean
     }
 
-    private var isSearching = false
     private var antDeviceRecyclerViewAdapter: AntDeviceRecyclerViewAdapter? = null
+    private lateinit var searchButton: Button
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreateView(inflater, container, savedInstanceState)
         val view = inflater.inflate(R.layout.fragment_main, container)
 
-        val searchButton = view.findViewById<Button>(R.id.searchButton)
+        searchButton = view.findViewById(R.id.searchButton)
         searchButton.setOnClickListener {
-            isSearching = !isSearching
-            searchButton.text = if (isSearching) getString(R.string.stop_service) else getString(R.string.start_service)
-            if (isSearching) {
-                (activity as ServiceStarter).startService()
-            } else {
+            val searching = (requireActivity() as ServiceStarter).isSearching()
+            if (searching) {
                 (activity as ServiceStarter).stopService()
+            } else {
+                (activity as ServiceStarter).startService()
             }
+            updateSearchButtonText(!searching)
         }
+        updateSearchButtonText((requireActivity() as ServiceStarter).isSearching())
 
         val recyclerView = view.findViewById<RecyclerView>(R.id.main_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(view.context)
@@ -47,9 +49,17 @@ class MainFragment: Fragment() {
         return view
     }
 
-    fun setDevices(devices: List<AntDevice>, selectedDevices: HashMap<BleServiceType, Int>) {
+    private fun updateSearchButtonText(searching: Boolean) {
+        searchButton.text = if (searching) getString(R.string.stop_service) else getString(R.string.start_service)
+    }
+
+    fun setDevices(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>) {
         activity?.runOnUiThread {
             antDeviceRecyclerViewAdapter?.updateDevices(devices, selectedDevices)
         }
+    }
+
+    fun searching(isSearching: Boolean) {
+        updateSearchButtonText(isSearching)
     }
 }
