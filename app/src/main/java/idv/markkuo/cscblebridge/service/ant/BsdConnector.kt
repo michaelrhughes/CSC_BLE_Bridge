@@ -36,7 +36,6 @@ class BsdConnector(context: Context, listener: DeviceManagerListener<AntDevice.B
                 listener.onDataUpdated(device)
             }
         })
-
         pcc.subscribeRawSpeedAndDistanceDataEvent { estTimestamp, _, timestampOfLastEvent, cumulativeRevolutions -> //estTimestamp - The estimated timestamp of when this event was triggered. Useful for correlating multiple events and determining when data was sent for more accurate data records.
             //eventFlags - Informational flags about the event.
             //timestampOfLastEvent - Sensor reported time counter value of last distance or speed computation (up to 1/200s accuracy). Units: s. Rollover: Every ~46 quadrillion s (~1.5 billion years).
@@ -49,9 +48,10 @@ class BsdConnector(context: Context, listener: DeviceManagerListener<AntDevice.B
             listener.onDataUpdated(device)
         }
 
-        // TODO
-        if (pcc.isSpeedAndCadenceCombinedSensor ) {
+        if (pcc.isSpeedAndCadenceCombinedSensor) {
             // reconnect cadence sensor as combined sensor
+//            pcc.releaseAccess()
+//            requestAccess()
 //            stop()
 //            combinedSensorConnected = true
 //            bcReleaseHandle = AntPlusBikeCadencePcc.requestAccess(getApplicationContext(), bsdPcc.getAntDeviceNumber(), 0, true,

@@ -25,7 +25,7 @@ class MainService : Service() {
 
     interface MainServiceListener {
         fun searching(isSearching: Boolean)
-        fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>)
+        fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, List<Int>>)
     }
 
     private val listeners = ArrayList<MainServiceListener>()

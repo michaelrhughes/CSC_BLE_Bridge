@@ -84,7 +84,7 @@ class LaunchActivity: AppCompatActivity(), MainFragment.ServiceStarter, MainServ
         mainFragment()?.searching(isSearching)
     }
 
-    override fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>) {
+    override fun onDevicesUpdated(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, List<Int>>) {
         val mainFragment = mainFragment()
         mainFragment?.setDevices(devices, selectedDevices)
     }

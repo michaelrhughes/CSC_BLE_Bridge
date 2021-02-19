@@ -16,6 +16,19 @@ sealed class AntDevice(val deviceId: Int, val deviceName: String, val typeName: 
         }
     }
 
+    data class BcDevice(
+            private val id: Int,
+            private val name: String,
+            var cadence: Int,
+            var cumulativeCrankRevolution: Long,
+            var crankEventTime: Long,
+            var cadenceTimestamp: Long,
+    ) : AntDevice(id, name, "ANT+ Bike Cadence", BleServiceType.CscService) {
+        override fun getDataString(): String {
+            return "Cadence: $cadence, Crank Revolution: $cumulativeCrankRevolution"
+        }
+    }
+
     data class SSDevice(
             private val id: Int,
             private val name: String,

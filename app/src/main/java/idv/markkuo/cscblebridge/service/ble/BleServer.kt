@@ -13,13 +13,8 @@ import android.content.pm.PackageManager
 import android.os.ParcelUuid
 import android.util.Log
 import idv.markkuo.cscblebridge.service.ant.AntDevice
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import java.util.*
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Semaphore
-import java.util.concurrent.locks.Lock
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
@@ -35,10 +30,10 @@ class BleServer {
     private var timer: Timer? = null
     private val registeredDevices: HashSet<BluetoothDevice> = HashSet()
     private var bluetoothLeAdvertiser: BluetoothLeAdvertiser? = null
-    private val antData = hashMapOf<BleServiceType, AntDevice>()
+    private val antData = hashMapOf<BleServiceType, ArrayList<AntDevice>>()
     private val servicesToCreate = ArrayList(BleServiceType.serviceTypes)
     private val mutex = Semaphore(1)
-    var selectedDevices = HashMap<BleServiceType, Int>()
+    var selectedDevices = HashMap<BleServiceType, ArrayList<Int>>()
 
     fun startServer(context: Context) {
         this.context = context
@@ -64,7 +59,18 @@ class BleServer {
     }
 
     fun updateData(serviceType: BleServiceType, antDevice: AntDevice) {
-        antData[serviceType] = antDevice
+        antData[serviceType]?.let { devices ->
+            val alreadyExists: AntDevice? = devices.firstOrNull { it.deviceId == antDevice.deviceId }
+
+            if (alreadyExists != null) {
+                devices.remove(alreadyExists)
+            }
+            devices.add(antDevice)
+
+            return@updateData
+        }
+
+        antData[serviceType] = arrayListOf(antDevice)
     }
 
     private fun startupInternal(context: Context) {
@@ -98,18 +104,18 @@ class BleServer {
         Log.i(TAG, "Notifying registered devices ${registeredDevices.size}")
         registeredDevices.forEach { device ->
             Log.i(TAG, "Notifying ${device.name}")
-            BleServiceType.serviceTypes.forEach { objectInstance ->
-                val service = server?.getService(objectInstance.serviceId)
+            BleServiceType.serviceTypes.forEach { bleService ->
+                val service = server?.getService(bleService.serviceId)
                 if (service != null) {
                     Log.i(TAG, "Notifying ${device.name} for ${service.uuid}")
-                    val antDevice = antData[objectInstance]
-                    if (antDevice != null && selectedDevices.values.contains(antDevice.deviceId)) {
-                        Log.i(TAG, "Notifying ${objectInstance.javaClass.canonicalName}:${antDevice.deviceId}")
-                        val data = objectInstance.getBleData(antDevice)
+                    val antDevices = antData[bleService]
+                    val selectedAntDevices = antDevices?.filter { selectedDevices[bleService]?.contains(it.deviceId) ?: false }
+                    if (selectedAntDevices != null && selectedAntDevices.isNotEmpty()) {
+                        val data = bleService.getBleData(selectedAntDevices)
                         val measurementCharacteristic: BluetoothGattCharacteristic = service
-                                .getCharacteristic(objectInstance.measurement)
+                                .getCharacteristic(bleService.measurement)
                         if (!measurementCharacteristic.setValue(data)) {
-                            Log.w(TAG, "${objectInstance.measurement} Measurement data isn't set properly!")
+                            Log.w(TAG, "${bleService.measurement} Measurement data isn't set properly!")
                         }
                         // false is used to send a notification
                         server?.notifyCharacteristicChanged(device, measurementCharacteristic, false)
@@ -117,7 +123,7 @@ class BleServer {
                         Log.i(TAG, "Not notifying anything, ant device was null")
                     }
                 } else {
-                    Log.v(TAG, "Service ${objectInstance.serviceId} was not found as an installed service")
+                    Log.v(TAG, "Service ${bleService.serviceId} was not found as an installed service")
                 }
             }
 

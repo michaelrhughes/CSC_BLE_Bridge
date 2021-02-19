@@ -53,7 +53,7 @@ class MainFragment: Fragment() {
         searchButton.text = if (searching) getString(R.string.stop_service) else getString(R.string.start_service)
     }
 
-    fun setDevices(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, Int>) {
+    fun setDevices(devices: List<AntDevice>, selectedDevices: Map<BleServiceType, List<Int>>) {
         activity?.runOnUiThread {
             antDeviceRecyclerViewAdapter?.updateDevices(devices, selectedDevices)
         }

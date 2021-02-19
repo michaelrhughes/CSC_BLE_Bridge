@@ -17,10 +17,11 @@ class AntToBleBridge {
     private var bleServer: BleServer? = null
 
     val antDevices = hashMapOf<Int, AntDevice>()
-    val selectedDevices = hashMapOf<BleServiceType, Int>()
+    val selectedDevices = hashMapOf<BleServiceType, ArrayList<Int>>()
     var serviceCallback: (() -> Unit)? = null
     var isSearching = false
 
+    @Synchronized
     fun startup(service: Context, callback: () -> Unit) {
         serviceCallback = callback
         stop()
@@ -37,6 +38,17 @@ class AntToBleBridge {
             override fun onDataUpdated(data: AntDevice.BsdDevice) {
                 dataUpdated(data, BleServiceType.CscService, callback) {
                     return@dataUpdated BsdConnector(service, this)
+                }
+            }
+        }))
+
+        antConnectors.add(BcConnector(service, object : AntDeviceConnector.DeviceManagerListener<AntDevice.BcDevice> {
+            override fun onDeviceStateChanged(result: RequestAccessResult, deviceState: DeviceState) {
+            }
+
+            override fun onDataUpdated(data: AntDevice.BcDevice) {
+                dataUpdated(data, BleServiceType.CscService, callback) {
+                    return@dataUpdated BcConnector(service, this)
                 }
             }
         }))
@@ -66,6 +78,7 @@ class AntToBleBridge {
         antConnectors.forEach { connector -> connector.startSearch() }
     }
 
+    @Synchronized
     private fun dataUpdated(data: AntDevice, type: BleServiceType, serviceCallback: () -> Unit, createService: () -> AntDeviceConnector<*, *>) {
         val isNew = !antDevices.containsKey(data.deviceId)
         antDevices[data.deviceId] = data
@@ -75,15 +88,34 @@ class AntToBleBridge {
             antConnectors.add(connector)
             connector.startSearch()
         }
+
+        // First selectedDevice selection
         if (!selectedDevices.containsKey(type)) {
-            selectedDevices[type] = data.deviceId
+            selectedDevices[type] = arrayListOf(data.deviceId)
             selectedDevicesUpdated()
+        } else {
+            if (type == BleServiceType.CscService) {
+                // Bsc and Ble devices supported
+                selectedDevices[type]?.let { devices ->
+                    val existingDevice = selectedDevices[type]?.firstOrNull { antDevices[it]?.typeName == data.typeName }
+                    if (existingDevice == null) {
+                        devices.add(data.deviceId)
+                        selectedDevicesUpdated()
+                    }
+                }
+            }
         }
         serviceCallback()
     }
 
+    @Synchronized
     fun deviceSelected(data: AntDevice) {
-        selectedDevices[data.bleType] = data.deviceId
+        val arrayList = selectedDevices[data.bleType] ?: arrayListOf()
+        val existingDevice = arrayList.firstOrNull { antDevices[it]?.typeName == data.typeName }
+        if (existingDevice != null) {
+            arrayList.remove(existingDevice)
+        }
+        arrayList.add(data.deviceId)
         selectedDevicesUpdated()
         serviceCallback?.invoke()
     }

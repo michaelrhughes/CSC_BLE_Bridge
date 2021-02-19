@@ -30,46 +30,67 @@ sealed class BleServiceType(val serviceId: UUID, val measurement: UUID, val feat
         private const val CSC_FEATURE_WHEEL_REV: Byte = 0x1
         /** supported CSC Feature bit: Cadence sensor  */
         private const val CSC_FEATURE_CRANK_REV: Byte = 0x2
+
+        private var currentFeature = CSC_FEATURE_WHEEL_REV or CSC_FEATURE_CRANK_REV
+
         override fun getSupportedFeatures(): ByteArray? {
             val data = ByteArray(2)
             // always leave the second byte 0
-            data[0] = CSC_FEATURE_WHEEL_REV or CSC_FEATURE_CRANK_REV
+            data[0] = currentFeature
             return data
         }
 
-        override fun getBleData(antDevice: AntDevice): ByteArray? {
-            if (antDevice !is AntDevice.BsdDevice) {
-                throw IllegalArgumentException("Unable to get BLE Data for RSC device with $antDevice")
+        override fun getBleData(antDevices: List<AntDevice>): ByteArray? {
+            if (antDevices.size > 2 || antDevices.isEmpty()) {
+                throw IllegalArgumentException("2 ANT+ devices (speed vs cadence) can be paired, Or 1 ANT+ device. But found ${antDevices.size}")
             }
-            val currentFeature = CSC_FEATURE_WHEEL_REV or CSC_FEATURE_CRANK_REV // TODO
+
+            val bsdDevice = antDevices.firstOrNull { it is AntDevice.BsdDevice } as AntDevice.BsdDevice?
+            val bcDevice = (antDevices.firstOrNull { it is AntDevice.BcDevice }) as AntDevice.BcDevice?
+
+            if (bsdDevice == null && bcDevice == null) {
+                throw IllegalArgumentException("Found devices which were not bsd devices")
+            }
+            val bsdFeature = if (bsdDevice != null) {
+                CSC_FEATURE_WHEEL_REV
+            } else {
+                0
+            }
+            val bcFeature = if (bcDevice != null) {
+                CSC_FEATURE_CRANK_REV
+            } else {
+                0
+            }
+
+            currentFeature = bsdFeature or bcFeature
 
             val data: MutableList<Byte> = ArrayList()
             data.add((currentFeature and 0x3)) // only preserve bit 0 and 1
 
             if ((currentFeature and CSC_FEATURE_WHEEL_REV).toInt() == CSC_FEATURE_WHEEL_REV.toInt()) {
                 // cumulative wheel revolutions (uint32), only take the last 4 bytes
-                data.add(antDevice.cumulativeWheelRevolution.toByte())
-                data.add((antDevice.cumulativeWheelRevolution shr java.lang.Byte.SIZE).toByte())
-                data.add((antDevice.cumulativeWheelRevolution shr java.lang.Byte.SIZE * 2).toByte())
-                data.add((antDevice.cumulativeWheelRevolution shr java.lang.Byte.SIZE * 3).toByte())
+                bsdDevice?.let {
+                    data.add(it.cumulativeWheelRevolution.toByte())
+                    data.add((it.cumulativeWheelRevolution shr java.lang.Byte.SIZE).toByte())
+                    data.add((it.cumulativeWheelRevolution shr java.lang.Byte.SIZE * 2).toByte())
+                    data.add((it.cumulativeWheelRevolution shr java.lang.Byte.SIZE * 3).toByte())
 
-                // Last Wheel Event Time (uint16),  unit is 1/1024s, only take the last 2 bytes
-                data.add(antDevice.lastWheelEventTime.toByte())
-                data.add((antDevice.lastWheelEventTime shr java.lang.Byte.SIZE).toByte())
+                    // Last Wheel Event Time (uint16),  unit is 1/1024s, only take the last 2 bytes
+                    data.add(it.lastWheelEventTime.toByte())
+                    data.add((it.lastWheelEventTime shr java.lang.Byte.SIZE).toByte())
+                }
             }
             if ((currentFeature and CSC_FEATURE_CRANK_REV).toInt() == CSC_FEATURE_CRANK_REV.toInt()) {
-                // TODO Implement this feature
+                bcDevice?.let {
+                    // Cumulative Crank Revolutions (uint16)
+                    data.add(it.cumulativeCrankRevolution.toByte())
+                    data.add((it.cumulativeCrankRevolution shr java.lang.Byte.SIZE).toByte())
 
-                // Cumulative Crank Revolutions (uint16)
-//                data.add(antDevice.cumulativeCrankRevolution as Byte)
-//                data.add((antDevice.cumulativeCrankRevolution shr java.lang.Byte.SIZE) as Byte)
-
-                // Last Crank Event Time (uint16) uint is 1/1024s
-//                data.add(antDevice.lastCrankEventTime as Byte)
-//                data.add((antDevice.lastCrankEventTime shr java.lang.Byte.SIZE) as Byte)
+                    // Last Crank Event Time (uint16) uint is 1/1024s
+                    data.add(it.crankEventTime.toByte())
+                    data.add((it.crankEventTime shr java.lang.Byte.SIZE).toByte())
+                }
             }
-
-            // convert to primitive byte array
 
             // convert to primitive byte array
             val byteArray = ByteArray(data.size)
@@ -89,10 +110,15 @@ sealed class BleServiceType(val serviceId: UUID, val measurement: UUID, val feat
             return null
         }
 
-        override fun getBleData(antDevice: AntDevice): ByteArray? {
-            if (antDevice !is AntDevice.HRDevice) {
-                throw IllegalArgumentException("Unable to get BLE Data for RSC device with $antDevice")
+        override fun getBleData(antDevices: List<AntDevice>): ByteArray? {
+            if (antDevices.size > 1 || antDevices.isEmpty()) {
+                throw IllegalArgumentException("Only one HR ANT+ device can be selected at a time")
             }
+            val antDevice = antDevices.first()
+            if (antDevice !is AntDevice.HRDevice) {
+                throw IllegalArgumentException("Unable to get BLE Data for HR device with $antDevice")
+            }
+
             // https://www.bluetooth.com/wp-content/uploads/Sitecore-Media-Library/Gatt/Xml/Characteristics/org.bluetooth.characteristic.heart_rate_measurement.xml
             val data: MutableList<Byte> = ArrayList()
 
@@ -122,7 +148,11 @@ sealed class BleServiceType(val serviceId: UUID, val measurement: UUID, val feat
         }
 
         // https://www.bluetooth.com/wp-content/uploads/Sitecore-Media-Library/Gatt/Xml/Characteristics/org.bluetooth.characteristic.rsc_measurement.xml
-        override fun getBleData(antDevice: AntDevice): ByteArray? {
+        override fun getBleData(antDevices: List<AntDevice>): ByteArray? {
+            if (antDevices.size > 1 || antDevices.isEmpty()) {
+                throw IllegalArgumentException("Only one HR ANT+ device can be selected at a time, found ${antDevices.size}")
+            }
+            val antDevice = antDevices.first()
             if (antDevice !is AntDevice.SSDevice) {
                 throw IllegalArgumentException("Unable to get BLE Data for RSC device with $antDevice")
             }
@@ -167,5 +197,5 @@ sealed class BleServiceType(val serviceId: UUID, val measurement: UUID, val feat
     }
 
     abstract fun getSupportedFeatures(): ByteArray?
-    abstract fun getBleData(antDevice: AntDevice): ByteArray?
+    abstract fun getBleData(antDevice: List<AntDevice>): ByteArray?
 }
